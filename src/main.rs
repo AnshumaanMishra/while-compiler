@@ -2,7 +2,7 @@ mod ast;
 mod lexer;
 
 use crate::ast::{AExpression, BExpression, Statement};
-use colored::Colorize;
+// use colored::Colorize;
 
 fn main() {
   println!(
