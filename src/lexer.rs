@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // Keywords Enum
 pub enum Keyword {
   // If Block
@@ -44,23 +46,18 @@ pub enum Literal {
   Int(i64),
 }
 
-// EOF Enum
-pub enum End {
-  End,
-}
-
 // Token Enum
 pub enum Token {
   // Main Keywords
-  KeywordToken(Keyword),
+  Keyword(Keyword),
   // Operators
-  OperatorToken(Operator),
+  Operator(Operator),
   // Delimiter
-  DelimiterToken(Delimiter),
+  Delimiter(Delimiter),
   // Variable
-  IdentifierToken(Identifier),
+  Identifier(Identifier),
   // Literals
-  LiteralToken(Literal),
+  Literal(Literal),
   // EOF
-  EOFToken(End),
+  End,
 }
