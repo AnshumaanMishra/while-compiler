@@ -67,7 +67,7 @@ pub enum Token {
 fn lex_int(chars: &[char]) -> (i64, usize) {
   let mut skip_len: usize = 0;
   let mut int: i64 = 0;
-  while skip_len < chars.len() && chars[skip_len].is_digit(10) {
+  while skip_len < chars.len() && chars[skip_len].is_ascii_digit() {
     int = int * 10 + (chars[skip_len].to_digit(10).unwrap() as i64);
     skip_len += 1;
   }
@@ -83,7 +83,7 @@ fn lex_idef(chars: &[char]) -> (String, usize) {
     skip_len += 1;
   }
 
-  return (var_name, skip_len);
+  (var_name, skip_len)
 }
 
 pub fn parse_tokens(chars: &[char], tokens: &mut Vec<Token>) -> Result<(), UserDefinedError> {
