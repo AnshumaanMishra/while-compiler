@@ -1,15 +1,16 @@
 use crate::{
-  error::{FileError, LexError, UserDefinedError},
+  ast::Statement,
+  error::{FileError, LexError, SyntaxError, UserDefinedError},
   lexer::{Delimiter, Identifier, Keyword, Literal, Operator, Token},
 };
 use colored::Colorize;
 
 pub fn handle_error(inp_err: UserDefinedError) {
   match inp_err {
-    UserDefinedError::FileErr(err) => match err {
+    UserDefinedError::File(err) => match err {
       FileError::InputArgumentEmpty => {
         eprintln!("{}", "Error: Input Argument Empty".red());
-        std::process::exit(2);
+        std::process::exit(10);
       }
       FileError::BuiltinError((name, e)) => {
         eprintln!(
@@ -19,23 +20,122 @@ pub fn handle_error(inp_err: UserDefinedError) {
           "Error: ".red(),
           e.to_string().yellow()
         );
-        std::process::exit(1);
+        std::process::exit(11);
       }
     },
-    UserDefinedError::LexErr(err) => match err {
+    UserDefinedError::Lex(err) => match err {
       LexError::UnidentifiedToken(t) => {
         eprintln!(
           "{} {}",
           "Error: Invalid Character:".red(),
           String::from(t).blue()
         );
-        std::process::exit(3);
+        std::process::exit(20);
       }
+    },
+    UserDefinedError::Syntax(err) => match err {
+      SyntaxError::DoWithoutWhile => {
+        eprintln!(
+          "{} {} {} {} {}",
+          "Error: ".red(),
+          "`do`".blue(),
+          " statement without ".red(),
+          "`while`".blue(),
+          " statement".red(),
+        );
+        std::process::exit(33);
+      }
+      SyntaxError::ElseWithoutIf => {
+        eprintln!(
+          "{} {} {} {} {}",
+          "Error: ".red(),
+          "`else`".blue(),
+          " statement without ".red(),
+          "`if`".blue(),
+          " statement".red(),
+        );
+        std::process::exit(32);
+      }
+      SyntaxError::InvalidAssign => {
+        eprintln!("{}", "Invalid Assign!".red());
+        std::process::exit(35)
+      }
+      SyntaxError::EndWithoutBlock => {
+        eprintln!(
+          "{} {} {} {} {}",
+          "Error: ".red(),
+          "`end`".blue(),
+          " statement without ".red(),
+          "any block".blue(),
+          " statement".red(),
+        );
+        std::process::exit(34);
+      }
+      SyntaxError::ThenWithoutIf => {
+        eprintln!(
+          "{} {} {} {} {}",
+          "Error: ".red(),
+          "`then`".blue(),
+          " statement without ".red(),
+          "`if`".blue(),
+          " statement".red(),
+        );
+        std::process::exit(31);
+      }
+      SyntaxError::UndefinedEnd => {
+        eprintln!("{}", "Error: Termination of block not defined".red(),);
+        std::process::exit(30);
+      }
+      SyntaxError::ExpectedThen => {
+        eprintln!(
+          "{} {} {}",
+          "Error: ".red(),
+          "expected `then`".blue(),
+          "after if condition".red(),
+        );
+        std::process::exit(36);
+      }
+      SyntaxError::ExpectedElse => {
+        eprintln!(
+          "{} {} {}",
+          "Error: ".red(),
+          "expected `else`".blue(),
+          "after then-branch".red(),
+        );
+        std::process::exit(37);
+      }
+      SyntaxError::ExpectedDo => {
+        eprintln!(
+          "{} {} {}",
+          "Error: ".red(),
+          "expected `do`".blue(),
+          "after while condition".red(),
+        );
+        std::process::exit(38);
+      }
+      SyntaxError::ExpectedEnd => {
+        eprintln!(
+          "{} {} {}",
+          "Error: ".red(),
+          "expected `end`".blue(),
+          "to close block".red(),
+        );
+        std::process::exit(39);
+      }
+      SyntaxError::UnconsumedTokens => {
+        eprintln!(
+          "{}",
+          "Error: unexpected tokens after end of program — missing `;` or stray token".red(),
+        );
+        std::process::exit(40);
+      }
+      SyntaxError::NoMatch => {}
     },
   }
 }
 
-pub fn get_string_for_token(input: &Token) -> String {
+#[allow(dead_code)]
+fn get_string_for_token(input: &Token) -> String {
   match input {
     Token::Kw(kw) => match &kw {
       Keyword::If => format!("{}", "\n\nif ".blue()),
@@ -73,10 +173,44 @@ pub fn get_string_for_token(input: &Token) -> String {
   }
 }
 
+#[allow(dead_code)]
 pub fn print_tokens(tokens: &Vec<Token>) {
   println!("Number of tokens lexed: {}\n", tokens.len());
   for i in tokens {
     print!("{}", get_string_for_token(i));
+  }
+}
+
+pub fn print_syntax_tree(stmt: &Statement, indent: usize) {
+  let pad = "  ".repeat(indent);
+  match stmt {
+    Statement::Skip => {
+      println!("{}Skip", pad);
+    }
+    Statement::Assign(var, expr) => {
+      println!("{}Assign", pad);
+      println!("{}  var:  {}", pad, var);
+      println!("{}  expr: {}", pad, expr);
+    }
+    Statement::Sequence(left, right) => {
+      println!("{}Sequence", pad);
+      print_syntax_tree(left, indent + 1);
+      print_syntax_tree(right, indent + 1);
+    }
+    Statement::If(cond, then_branch, else_branch) => {
+      println!("{}If", pad);
+      println!("{}  cond: {}", pad, cond);
+      println!("{}  then:", pad);
+      print_syntax_tree(then_branch, indent + 2);
+      println!("{}  else:", pad);
+      print_syntax_tree(else_branch, indent + 2);
+    }
+    Statement::While(cond, body) => {
+      println!("{}While", pad);
+      println!("{}  cond: {}", pad, cond);
+      println!("{}  body:", pad);
+      print_syntax_tree(body, indent + 2);
+    }
   }
 }
 

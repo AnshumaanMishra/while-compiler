@@ -10,8 +10,9 @@ use std::path::PathBuf;
 use std::process::exit;
 
 // use crate::ast::{AExpression, BExpression, Statement};
+use crate::ast::parse;
 use crate::error::{FileError, UserDefinedError};
-use crate::helpers::{handle_error, print_tokens};
+use crate::helpers::{handle_error, print_syntax_tree};
 use crate::lexer::{Token, parse_tokens};
 
 #[derive(Parser, Debug)]
@@ -50,7 +51,7 @@ fn parse_arguments(args: &Args) -> Result<(PathBuf, PathBuf), UserDefinedError> 
   } else if let Some(path) = args.files.first() {
     path.clone()
   } else {
-    return Err(UserDefinedError::FileErr(FileError::InputArgumentEmpty));
+    return Err(UserDefinedError::File(FileError::InputArgumentEmpty));
   };
 
   // Resolve the output path independently
@@ -87,7 +88,7 @@ fn main() {
 
   match fs::read_to_string(&input_file) {
     Err(e) => {
-      handle_error(UserDefinedError::FileErr(FileError::BuiltinError((
+      handle_error(UserDefinedError::File(FileError::BuiltinError((
         String::from(input_file.to_str().unwrap()),
         e,
       ))));
@@ -97,7 +98,10 @@ fn main() {
       let exploded_source: Vec<char> = contents.chars().collect();
       let mut tokens: Vec<Token> = Vec::new();
       match parse_tokens(&exploded_source, &mut tokens) {
-        Ok(()) => print_tokens(&tokens),
+        Ok(()) => match parse(&tokens) {
+          Ok(ast) => print_syntax_tree(&ast, 2),
+          Err(e) => handle_error(e),
+        },
         Err(e) => handle_error(e),
       }
     }

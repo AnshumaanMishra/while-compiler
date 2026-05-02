@@ -2,8 +2,9 @@ use std::io::Error;
 
 #[derive(Debug)]
 pub enum UserDefinedError {
-  FileErr(FileError),
-  LexErr(LexError),
+  File(FileError),
+  Lex(LexError),
+  Syntax(SyntaxError),
 }
 
 #[derive(Debug)]
@@ -15,4 +16,20 @@ pub enum FileError {
 #[derive(Debug)]
 pub enum LexError {
   UnidentifiedToken(char),
+}
+
+#[derive(Debug)]
+pub enum SyntaxError {
+  ThenWithoutIf,
+  ElseWithoutIf,
+  DoWithoutWhile,
+  EndWithoutBlock,
+  UndefinedEnd,
+  NoMatch,
+  InvalidAssign,
+  ExpectedThen,
+  ExpectedElse,
+  ExpectedDo,
+  ExpectedEnd,
+  UnconsumedTokens,
 }

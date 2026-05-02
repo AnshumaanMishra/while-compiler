@@ -64,6 +64,8 @@ pub enum Token {
   End,
 }
 
+// Lexes Integers. Negative integers are treated as integers with the unary minus
+// operated on them
 fn lex_int(chars: &[char]) -> (i64, usize) {
   let mut skip_len: usize = 0;
   let mut int: i64 = 0;
@@ -74,6 +76,7 @@ fn lex_int(chars: &[char]) -> (i64, usize) {
   (int, skip_len)
 }
 
+// Lexes Identifiers.
 fn lex_idef(chars: &[char]) -> (String, usize) {
   let mut skip_len: usize = 0;
   let mut var_name = String::new();
@@ -184,11 +187,7 @@ pub fn parse_tokens(chars: &[char], tokens: &mut Vec<Token>) -> Result<(), UserD
     ['\r', ..] => 1,
     [' ', ..] => 1,
     _ => {
-      return {
-        Err(UserDefinedError::LexErr(LexError::UnidentifiedToken(
-          chars[0],
-        )))
-      };
+      return Err(UserDefinedError::Lex(LexError::UnidentifiedToken(chars[0])));
     }
   };
   // Used for debugging, do not uncomment
@@ -537,7 +536,7 @@ mod lexer_tests {
   fn lex_unidentified_token_returns_err() {
     let result = lex("@");
     assert!(result.is_err());
-    if let Err(UserDefinedError::LexErr(LexError::UnidentifiedToken(c))) = result {
+    if let Err(UserDefinedError::Lex(LexError::UnidentifiedToken(c))) = result {
       assert_eq!(c, '@');
     } else {
       panic!("expected UnidentifiedToken('@')");
