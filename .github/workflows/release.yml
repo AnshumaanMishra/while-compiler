@@ -14,16 +14,16 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: my-project
+            artifact: while-compiler
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact: my-project
+            artifact: while-compiler
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact: my-project
+            artifact: while-compiler
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: my-project.exe
+            artifact: while-compiler.exe
 
     steps:
       - uses: actions/checkout@v4
@@ -43,28 +43,30 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf my-project-${{ matrix.target }}.tar.gz ${{ matrix.artifact }}
-          mv my-project-${{ matrix.target }}.tar.gz ../../../
+          tar czf while-compiler-${{ matrix.target }}.tar.gz ${{ matrix.artifact }}
+          mv while-compiler-${{ matrix.target }}.tar.gz ../../../
 
       - name: Package binary (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           cd target/${{ matrix.target }}/release
-          Compress-Archive -Path ${{ matrix.artifact }} -DestinationPath ../../../my-project-${{ matrix.target }}.zip
+          Compress-Archive -Path ${{ matrix.artifact }} -DestinationPath ../../../while-compiler-${{ matrix.target }}.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.target }}
           path: |
-            my-project-*.tar.gz
-            my-project-*.zip
+            while-compiler-*.tar.gz
+            while-compiler-*.zip
 
   release:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +75,7 @@ jobs:
         id: version
         run: |
           VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          echo "version=$VERSION" in $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -87,6 +89,6 @@ jobs:
           name: "v${{ steps.version.outputs.version }}"
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: artifacts/**
+          files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
