@@ -1,10 +1,12 @@
 mod analyzer;
 mod ast;
+mod cfg;
 mod error;
 mod helpers;
 mod interpreter;
+mod labeler;
+mod labelled_ast;
 mod lexer;
-// mod parser;
 
 use clap::Parser;
 use colored::Colorize;
@@ -13,10 +15,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::exit;
 
-// use crate::ast::{AExpression, BExpression, Statement};
 use crate::analyzer::SemanticAnalyzer;
 use crate::ast::parse;
-use crate::helpers::{handle_error, print_pretty_ast, print_tokens, write_json};
+use crate::cfg::{Cfg, build_cfg};
+use crate::helpers::{handle_error, print_cfg, print_pretty_ast, print_tokens, write_json};
 use crate::interpreter::exec_stmt;
 use crate::lexer::{Token, parse_tokens};
 
@@ -37,6 +39,10 @@ pub struct Cli {
   /// Execute the program and print the final state
   #[arg(long)]
   pub run: bool,
+
+  /// Build and export the Control Flow Graph as JSON
+  #[arg(long)]
+  pub cfg: bool,
 }
 
 fn main() {
@@ -48,9 +54,9 @@ fn main() {
       eprintln!(
         "{} {} {} {}",
         "Error reading file '".red(),
-        cli.file.display().to_string().blue(),
+        cli.file.display().to_string().cyan().bold(),
         "': ".red(),
-        e.to_string().blue()
+        e.to_string().cyan().bold()
       );
       std::process::exit(1);
     }
@@ -65,13 +71,12 @@ fn main() {
   }
 
   if cli.tokens {
-    println!("{}", "Token Stream: ".blue());
+    println!("{}", "Token Stream: ".cyan().bold());
     print_tokens(&tokens);
     write_json(&tokens, "tokens").expect("Failed to write tokens.json");
     return;
   }
 
-  // 3. Parsing (Phase 4)
   let ast = match parse(&tokens) {
     Ok(tree) => tree,
     Err(e) => {
@@ -81,9 +86,20 @@ fn main() {
   };
 
   if cli.ast {
-    println!("{}", "Abstract Syntax Tree: ".blue());
+    println!("{}", "Abstract Syntax Tree: ".cyan().bold());
     print_pretty_ast(&ast);
     write_json(&ast, "ast").expect("Failed to write ast.json");
+    return;
+  }
+
+  if cli.cfg {
+    println!("{}", "Control Flow Graph: ".cyan().bold());
+    let mut label_counter = 1;
+    let labelled_ast = crate::labeler::label_ast(ast, &mut label_counter);
+    let mut graph = Cfg::new();
+    build_cfg(&labelled_ast, &mut graph);
+    crate::helpers::write_json(&graph, "cfg").expect("Failed to write cfg.json");
+    print_cfg(&graph);
     return;
   }
 
@@ -94,7 +110,7 @@ fn main() {
   }
 
   if cli.run {
-    println!("{}", "Executing Program: ".blue());
+    println!("{}", "Executing Program: ".cyan().bold());
     let mut store = HashMap::new();
     exec_stmt(&ast, &mut store);
 

@@ -1,3 +1,4 @@
+use crate::cfg::Cfg;
 use crate::{
   error::{LexError, SemanticError, SyntaxError, UserDefinedError},
   lexer::{Delimiter, Identifier, Keyword, Literal, Operator, Token},
@@ -249,6 +250,37 @@ pub fn write_json<T: Serialize>(data: &T, filename: &str) -> std::io::Result<()>
   let file = fs::File::create(path)?;
   serde_json::to_writer_pretty(file, data)
     .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+}
+
+pub fn print_cfg(cfg: &Cfg) {
+  println!("{}", "Nodes (Labels and Statements):".bold());
+  let mut sorted_nodes: Vec<_> = cfg.nodes.iter().collect();
+  sorted_nodes.sort();
+
+  for label in sorted_nodes {
+    let stmt_text = cfg
+      .statement_map
+      .get(label)
+      .map(|s| s.as_str())
+      .unwrap_or("Unknown Statement");
+
+    println!(
+      "  {}: {}",
+      label.to_string().yellow().bold(),
+      stmt_text.white()
+    );
+  }
+
+  println!("\n{}", "Edges (Control Flow):".bold());
+  for edge in &cfg.edges {
+    println!(
+      "  {} {} {}",
+      edge.from.to_string().yellow(),
+      "-->".bold(),
+      edge.to.to_string().yellow()
+    );
+  }
+  println!();
 }
 
 // Tests:
