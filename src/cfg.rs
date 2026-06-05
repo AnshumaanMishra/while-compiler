@@ -1,4 +1,5 @@
 use crate::labelled_ast::{Label, StatementL};
+use crate::lexer::Token;
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -12,7 +13,7 @@ pub struct Edge {
 pub struct Cfg {
   pub nodes: Vec<Label>,
   pub edges: Vec<Edge>,
-  pub statement_map: HashMap<Label, String>,
+  pub statement_map: HashMap<Label, Vec<Token>>,
 }
 
 impl Cfg {
@@ -27,7 +28,7 @@ impl Cfg {
   pub fn add_node(&mut self, label: Label, stmt: &StatementL) {
     if !self.nodes.contains(&label) {
       self.nodes.push(label);
-      self.statement_map.insert(label, format!("{}", stmt));
+      self.statement_map.insert(label, stmt.to_tokens());
     }
   }
 

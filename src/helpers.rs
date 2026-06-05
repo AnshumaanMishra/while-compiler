@@ -256,18 +256,11 @@ pub fn print_cfg(cfg: &Cfg) {
   let mut sorted_nodes: Vec<_> = cfg.nodes.iter().collect();
   sorted_nodes.sort();
 
-  for label in sorted_nodes {
-    let stmt_text = cfg
-      .statement_map
-      .get(label)
-      .map(|s| s.as_str())
-      .unwrap_or("Unknown Statement");
-
-    println!(
-      "  {}: {}",
-      label.to_string().yellow().bold(),
-      stmt_text.white()
-    );
+  for label in &cfg.nodes {
+    let tokens = cfg.statement_map.get(label).unwrap();
+    // Convert tokens to a readable string for the terminal
+    let stmt_text: String = tokens.iter().map(|t| format!("{:?} ", t)).collect();
+    println!("  {}: {}", label.to_string().yellow(), stmt_text);
   }
 
   println!("\n{}", "Edges (Control Flow):".bold());

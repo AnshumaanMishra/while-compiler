@@ -1,8 +1,6 @@
-x := 1 + 2;
-if 1 = 2 then
-  y := 5 + 6
-else
-  z := 3 + 4
-end;
-
-w := (3 + 4) * 2
+n := 6;
+result := 1;
+while !(n <= 0) do
+  result := result * n;
+  n := n - 1
+end

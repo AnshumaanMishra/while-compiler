@@ -96,6 +96,30 @@ impl AExpression {
       AExpression::Mul(l, r) => l.to_doc().append(RcDoc::text(" * ")).append(r.to_doc()),
     }
   }
+  pub fn to_tokens(&self) -> Vec<Token> {
+    match self {
+      AExpression::Int(n) => vec![Token::Lit(Literal::Int(*n))],
+      AExpression::Var(s) => vec![Token::Idf(Identifier::Variable(s.clone()))],
+      AExpression::Add(a, b) => {
+        let mut tokens = a.to_tokens();
+        tokens.push(Token::Op(Operator::Add));
+        tokens.extend(b.to_tokens());
+        tokens
+      }
+      AExpression::Sub(a, b) => {
+        let mut tokens = a.to_tokens();
+        tokens.push(Token::Op(Operator::Sub));
+        tokens.extend(b.to_tokens());
+        tokens
+      }
+      AExpression::Mul(a, b) => {
+        let mut tokens = a.to_tokens();
+        tokens.push(Token::Op(Operator::Mul));
+        tokens.extend(b.to_tokens());
+        tokens
+      }
+    }
+  }
 }
 
 impl BExpression {
@@ -109,6 +133,35 @@ impl BExpression {
         .append(b.to_doc())
         .append(RcDoc::text(")")),
       BExpression::And(l, r) => l.to_doc().append(RcDoc::text(" and ")).append(r.to_doc()),
+    }
+  }
+  pub fn to_tokens(&self) -> Vec<Token> {
+    match self {
+      BExpression::True => vec![Token::Lit(Literal::True)],
+      BExpression::False => vec![Token::Lit(Literal::False)],
+      BExpression::Equ(a, b) => {
+        let mut tokens = a.to_tokens();
+        tokens.push(Token::Op(Operator::Equ));
+        tokens.extend(b.to_tokens());
+        tokens
+      }
+      BExpression::Leq(a, b) => {
+        let mut tokens = a.to_tokens();
+        tokens.push(Token::Op(Operator::Leq));
+        tokens.extend(b.to_tokens());
+        tokens
+      }
+      BExpression::Not(b) => {
+        let mut tokens = vec![Token::Op(Operator::Not)];
+        tokens.extend(b.to_tokens());
+        tokens
+      }
+      BExpression::And(b1, b2) => {
+        let mut tokens = b1.to_tokens();
+        tokens.push(Token::Op(Operator::And));
+        tokens.extend(b2.to_tokens());
+        tokens
+      }
     }
   }
 }
