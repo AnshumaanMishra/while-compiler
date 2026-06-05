@@ -1,28 +1,14 @@
 use crate::{
-  ast::Statement,
-  error::{FileError, LexError, SyntaxError, UserDefinedError},
+  error::{LexError, SemanticError, SyntaxError, UserDefinedError},
   lexer::{Delimiter, Identifier, Keyword, Literal, Operator, Token},
 };
 use colored::Colorize;
+use serde::Serialize;
+use std::fs;
+use std::path::Path;
 
 pub fn handle_error(inp_err: UserDefinedError) {
   match inp_err {
-    UserDefinedError::File(err) => match err {
-      FileError::InputArgumentEmpty => {
-        eprintln!("{}", "Error: Input Argument Empty".red());
-        std::process::exit(10);
-      }
-      FileError::BuiltinError((name, e)) => {
-        eprintln!(
-          "{} {}\n\t{} {}",
-          "Filename: ".red(),
-          name.blue(),
-          "Error: ".red(),
-          e.to_string().yellow()
-        );
-        std::process::exit(11);
-      }
-    },
     UserDefinedError::Lex(err) => match err {
       LexError::UnidentifiedToken(t) => {
         eprintln!(
@@ -131,91 +117,141 @@ pub fn handle_error(inp_err: UserDefinedError) {
       }
       SyntaxError::NoMatch => {}
     },
+    UserDefinedError::Semantic(err) => match err {
+      SemanticError::UninitializedVariable(varname) => {
+        eprintln!(
+          "{} {} {}",
+          "Error: ".red(),
+          "Uninitialised Variable".blue(),
+          varname.red(),
+        );
+        std::process::exit(50);
+      }
+    },
   }
 }
 
-#[allow(dead_code)]
-fn get_string_for_token(input: &Token) -> String {
-  match input {
-    Token::Kw(kw) => match &kw {
-      Keyword::If => format!("{}", "\n\nif ".blue()),
-      Keyword::Then => format!("{}", " then\n".blue()),
-      Keyword::Else => format!("{}", "\nelse\n".blue()),
-      Keyword::While => format!("{}", "\nwhile ".blue()),
-      Keyword::Do => format!("{}", "do\n".blue()),
-      Keyword::Skip => format!("{}", "\nskip\n".blue()),
-      Keyword::End => format!("{}", "\nend\n\n".blue()),
-    },
-    Token::Op(op) => match op {
-      Operator::Assign => format!("{}", " := ".green()),
-      Operator::Add => format!("{}", " + ".green()),
-      Operator::Sub => format!("{}", " - ".green()),
-      Operator::Mul => format!("{}", " * ".green()),
-      Operator::Equ => format!("{}", " = ".green()),
-      Operator::Leq => format!("{}", " <= ".green()),
-      Operator::Not => format!("{}", " not ".green()),
-      Operator::And => format!("{}", " && ".green()),
-      Operator::Semicolon => format!("{}", ";".green()),
-    },
-    Token::Del(dl) => match dl {
-      Delimiter::LParen => format!("{}", "(".yellow()),
-      Delimiter::RParen => format!("{}", ")".yellow()),
-    },
-    Token::Idf(id) => match id {
-      Identifier::Variable(varname) => format!("{} ", varname.cyan()),
-    },
-    Token::Lit(lit) => match lit {
-      Literal::True => format!("{} ", "True".white()),
-      Literal::False => format!("{} ", "False".white()),
-      Literal::Int(i) => format!("{}", i.to_string().white()),
-    },
-    Token::End => format!("{}", "\n\nEND\n".red()),
-  }
-}
-
-#[allow(dead_code)]
-pub fn print_tokens(tokens: &Vec<Token>) {
+pub fn print_tokens(tokens: &[Token]) {
   println!("Number of tokens lexed: {}\n", tokens.len());
-  for i in tokens {
-    print!("{}", get_string_for_token(i));
+
+  println!("{:<15} | {}", "KIND".bold(), "TEXT".bold());
+  println!("{}", "-".repeat(35));
+
+  for token in tokens {
+    let (kind, text) = match token {
+      Token::Kw(kw) => {
+        let s = match kw {
+          Keyword::If => "if",
+          Keyword::Then => "then",
+          Keyword::Else => "else",
+          Keyword::While => "while",
+          Keyword::Do => "do",
+          Keyword::Skip => "skip",
+          Keyword::End => "end",
+        };
+        ("Keyword", s.blue().to_string())
+      }
+      Token::Op(op) => {
+        let s = match op {
+          Operator::Assign => ":=",
+          Operator::Add => "+",
+          Operator::Sub => "-",
+          Operator::Mul => "*",
+          Operator::Equ => "=",
+          Operator::Leq => "<=",
+          Operator::Not => "not",
+          Operator::And => "and",
+          Operator::Semicolon => ";",
+        };
+        ("Operator", s.green().to_string())
+      }
+      Token::Del(dl) => {
+        let s = match dl {
+          Delimiter::LParen => "(",
+          Delimiter::RParen => ")",
+        };
+        ("Delimiter", s.yellow().to_string())
+      }
+      Token::Idf(Identifier::Variable(v)) => ("Identifier", v.cyan().to_string()),
+      Token::Lit(lit) => {
+        let s = match lit {
+          Literal::True => "true".to_string(),
+          Literal::False => "false".to_string(),
+          Literal::Int(i) => i.to_string(),
+        };
+        ("Literal", s.white().to_string())
+      }
+      Token::End => ("EOF", "END".red().to_string()),
+    };
+
+    println!("{:<15} | {}", kind, text);
+  }
+  println!();
+}
+
+pub fn print_pretty_ast(stmt: &crate::ast::Statement) {
+  let doc = stmt.to_doc();
+  let mut buffer = Vec::new();
+  doc.render(80, &mut buffer).unwrap();
+  let rendered_string = String::from_utf8(buffer).unwrap();
+  println!("{}", highlight_syntax(&rendered_string));
+  println!();
+}
+
+fn highlight_syntax(code: &str) -> String {
+  let mut out = String::new();
+  let mut current_word = String::new();
+  for c in code.chars() {
+    if c.is_alphanumeric() || c == '_' {
+      current_word.push(c);
+    } else {
+      if !current_word.is_empty() {
+        out.push_str(&color_word(&current_word));
+        current_word.clear();
+      }
+      let sym = match c {
+        '+' | '-' | '*' | '=' | '<' | ';' | ':' => c.to_string().green().to_string(),
+        '(' | ')' => c.to_string().yellow().to_string(),
+        _ => c.to_string(),
+      };
+      out.push_str(&sym);
+    }
+  }
+
+  if !current_word.is_empty() {
+    out.push_str(&color_word(&current_word));
+  }
+
+  out
+}
+
+fn color_word(word: &str) -> String {
+  match word {
+    "if" | "then" | "else" | "while" | "do" | "skip" | "end" => word.blue().to_string(),
+    "not" | "and" => word.green().to_string(),
+    "true" | "false" => word.white().to_string(),
+    _ => {
+      if word.chars().all(|c| c.is_ascii_digit()) {
+        word.white().to_string()
+      } else {
+        word.cyan().to_string()
+      }
+    }
   }
 }
 
-pub fn print_syntax_tree(stmt: &Statement, indent: usize) {
-  let pad = "  ".repeat(indent);
-  match stmt {
-    Statement::Skip => {
-      println!("{}Skip", pad);
-    }
-    Statement::Assign(var, expr) => {
-      println!("{}Assign", pad);
-      println!("{}  var:  {}", pad, var);
-      println!("{}  expr: {}", pad, expr);
-    }
-    Statement::Sequence(left, right) => {
-      println!("{}Sequence", pad);
-      print_syntax_tree(left, indent + 1);
-      print_syntax_tree(right, indent + 1);
-    }
-    Statement::If(cond, then_branch, else_branch) => {
-      println!("{}If", pad);
-      println!("{}  cond: {}", pad, cond);
-      println!("{}  then:", pad);
-      print_syntax_tree(then_branch, indent + 2);
-      println!("{}  else:", pad);
-      print_syntax_tree(else_branch, indent + 2);
-    }
-    Statement::While(cond, body) => {
-      println!("{}While", pad);
-      println!("{}  cond: {}", pad, cond);
-      println!("{}  body:", pad);
-      print_syntax_tree(body, indent + 2);
-    }
+pub fn write_json<T: Serialize>(data: &T, filename: &str) -> std::io::Result<()> {
+  let dir = Path::new("outputs");
+  if !dir.exists() {
+    fs::create_dir(dir)?;
   }
+  let path = dir.join(format!("{}.json", filename));
+  let file = fs::File::create(path)?;
+  serde_json::to_writer_pretty(file, data)
+    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
 }
 
 // Tests:
-// Note: The tests, and only the tests, have been written using AI
 #[cfg(test)]
 mod helpers_tests {
   use super::*;
@@ -239,8 +275,44 @@ mod helpers_tests {
     out
   }
 
+  fn get_plain_text(token: &Token) -> String {
+    match token {
+      Token::Kw(kw) => match kw {
+        Keyword::If => "if".to_string(),
+        Keyword::Then => "then".to_string(),
+        Keyword::Else => "else".to_string(),
+        Keyword::While => "while".to_string(),
+        Keyword::Do => "do".to_string(),
+        Keyword::Skip => "skip".to_string(),
+        Keyword::End => "end".to_string(),
+      },
+      Token::Op(op) => match op {
+        Operator::Assign => ":=".to_string(),
+        Operator::Add => "+".to_string(),
+        Operator::Sub => "-".to_string(),
+        Operator::Mul => "*".to_string(),
+        Operator::Equ => "=".to_string(),
+        Operator::Leq => "<=".to_string(),
+        Operator::Not => "not".to_string(),
+        Operator::And => "and".to_string(),
+        Operator::Semicolon => ";".to_string(),
+      },
+      Token::Del(dl) => match dl {
+        Delimiter::LParen => "(".to_string(),
+        Delimiter::RParen => ")".to_string(),
+      },
+      Token::Idf(Identifier::Variable(v)) => v.to_string(),
+      Token::Lit(lit) => match lit {
+        Literal::True => "true".to_string(),
+        Literal::False => "false".to_string(),
+        Literal::Int(i) => i.to_string(),
+      },
+      Token::End => "END".to_string(),
+    }
+  }
+
   fn text(token: &Token) -> String {
-    strip_ansi(&get_string_for_token(token))
+    strip_ansi(&get_plain_text(token))
   }
 
   // -------------------------------------------------------------------------
@@ -323,7 +395,7 @@ mod helpers_tests {
 
   #[test]
   fn display_op_and() {
-    assert!(text(&Token::Op(Operator::And)).contains("&&"));
+    assert!(text(&Token::Op(Operator::And)).contains("and"));
   }
 
   #[test]

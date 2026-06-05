@@ -1,8 +1,9 @@
-#![allow(dead_code)]
+use serde::Serialize;
 
 use crate::error::{LexError, UserDefinedError};
 
 // Keywords Enum
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Keyword {
   // If Block
   If,
@@ -18,6 +19,7 @@ pub enum Keyword {
 }
 
 // Operators Enum
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Operator {
   Assign,
   Add,
@@ -31,17 +33,20 @@ pub enum Operator {
 }
 
 // Delimiters Enum
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Delimiter {
   LParen,
   RParen,
 }
 
 // Identifiers Enum
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Identifier {
   Variable(String),
 }
 
 // Literals Enum
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Literal {
   True,
   False,
@@ -49,6 +54,7 @@ pub enum Literal {
 }
 
 // Token Enum
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Token {
   // Main Keywords
   Kw(Keyword),

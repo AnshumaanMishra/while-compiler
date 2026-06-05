@@ -1,5 +1,7 @@
 // #![allow(dead_code)]
 
+use pretty::RcDoc;
+use serde::Serialize;
 use std::fmt;
 
 use crate::{
@@ -8,7 +10,7 @@ use crate::{
 };
 
 // Arithmetic Expressions
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum AExpression {
   Int(i64),
   Var(String),
@@ -30,7 +32,7 @@ impl fmt::Display for AExpression {
 }
 
 // Boolean Expressions
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum BExpression {
   True,
   False,
@@ -55,7 +57,7 @@ impl fmt::Display for BExpression {
 
 // TopLevel Statement
 // #[allow(clippy::recursive_drop)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Statement {
   Assign(String, AExpression),
   Skip,
@@ -72,6 +74,72 @@ impl fmt::Display for Statement {
       Statement::Sequence(a, b) => write!(f, "{}; {}", a, b),
       Statement::If(c, s1, s2) => write!(f, "if {} then {} else {}", c, s1, s2),
       Statement::While(c, s) => write!(f, "while {} do {}", c, s),
+    }
+  }
+}
+
+impl AExpression {
+  pub fn to_doc<'a>(&'a self) -> RcDoc<'a, ()> {
+    match self {
+      AExpression::Int(n) => RcDoc::as_string(n),
+      AExpression::Var(s) => RcDoc::as_string(s),
+      AExpression::Add(l, r) => RcDoc::text("(")
+        .append(l.to_doc())
+        .append(RcDoc::text(" + "))
+        .append(r.to_doc())
+        .append(RcDoc::text(")")),
+      AExpression::Sub(l, r) => RcDoc::text("(")
+        .append(l.to_doc())
+        .append(RcDoc::text(" - "))
+        .append(r.to_doc())
+        .append(RcDoc::text(")")),
+      AExpression::Mul(l, r) => l.to_doc().append(RcDoc::text(" * ")).append(r.to_doc()),
+    }
+  }
+}
+
+impl BExpression {
+  pub fn to_doc<'a>(&'a self) -> RcDoc<'a, ()> {
+    match self {
+      BExpression::True => RcDoc::text("true"),
+      BExpression::False => RcDoc::text("false"),
+      BExpression::Equ(l, r) => l.to_doc().append(RcDoc::text(" = ")).append(r.to_doc()),
+      BExpression::Leq(l, r) => l.to_doc().append(RcDoc::text(" <= ")).append(r.to_doc()),
+      BExpression::Not(b) => RcDoc::text("not (")
+        .append(b.to_doc())
+        .append(RcDoc::text(")")),
+      BExpression::And(l, r) => l.to_doc().append(RcDoc::text(" and ")).append(r.to_doc()),
+    }
+  }
+}
+
+impl Statement {
+  pub fn to_doc<'a>(&'a self) -> RcDoc<'a, ()> {
+    match self {
+      Statement::Skip => RcDoc::text("skip"),
+      Statement::Assign(var, expr) => RcDoc::as_string(var)
+        .append(RcDoc::text(" := "))
+        .append(expr.to_doc()),
+      Statement::Sequence(s1, s2) => s1
+        .to_doc()
+        .append(RcDoc::text(";"))
+        .append(RcDoc::hardline())
+        .append(s2.to_doc()),
+      Statement::If(cond, s1, s2) => RcDoc::text("if ")
+        .append(cond.to_doc())
+        .append(RcDoc::text(" then"))
+        .append(RcDoc::hardline().append(s1.to_doc()).nest(2))
+        .append(RcDoc::hardline())
+        .append(RcDoc::text("else"))
+        .append(RcDoc::hardline().append(s2.to_doc()).nest(2))
+        .append(RcDoc::hardline())
+        .append(RcDoc::text("end")),
+      Statement::While(cond, body) => RcDoc::text("while ")
+        .append(cond.to_doc())
+        .append(RcDoc::text(" do"))
+        .append(RcDoc::hardline().append(body.to_doc()).nest(2))
+        .append(RcDoc::hardline())
+        .append(RcDoc::text("end")),
     }
   }
 }

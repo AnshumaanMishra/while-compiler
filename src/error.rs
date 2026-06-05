@@ -1,17 +1,18 @@
-use std::io::Error;
+// use std::io::Error;
 
 #[derive(Debug)]
 pub enum UserDefinedError {
-  File(FileError),
+  // File(FileError),
   Lex(LexError),
   Syntax(SyntaxError),
+  Semantic(SemanticError),
 }
 
-#[derive(Debug)]
-pub enum FileError {
-  InputArgumentEmpty,
-  BuiltinError((String, Error)),
-}
+// #[derive(Debug)]
+// pub enum FileError {
+//   InputArgumentEmpty,
+//   BuiltinError((String, Error)),
+// }
 
 #[derive(Debug)]
 pub enum LexError {
@@ -32,4 +33,9 @@ pub enum SyntaxError {
   ExpectedDo,
   ExpectedEnd,
   UnconsumedTokens,
+}
+
+#[derive(Debug)]
+pub enum SemanticError {
+  UninitializedVariable(String),
 }

@@ -4,4 +4,5 @@ if 1 = 2 then
 else
   z := 3 + 4
 end;
+
 w := (3 + 4) * 2
