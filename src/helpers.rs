@@ -248,8 +248,7 @@ pub fn write_json<T: Serialize>(data: &T, filename: &str) -> std::io::Result<()>
   }
   let path = dir.join(format!("{}.json", filename));
   let file = fs::File::create(path)?;
-  serde_json::to_writer_pretty(file, data)
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+  serde_json::to_writer_pretty(file, data).map_err(std::io::Error::other)
 }
 
 pub fn print_cfg(cfg: &Cfg) {
